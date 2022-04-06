@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:js_util';
 import 'dart:typed_data';
 
+import 'package:dh2vrml_flutter/x3d_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:editable/editable.dart';
@@ -19,7 +20,6 @@ class EditorPage extends StatefulWidget {
 
 class EditorPageState extends State<EditorPage> {
   FilePickerResult? file;
-  static ValueKey key = ValueKey('key_0');
   final _editableKey = GlobalKey<EditableState>();
 
   @override
@@ -27,8 +27,13 @@ class EditorPageState extends State<EditorPage> {
     super.initState();
   }
 
+  // TODO: DRY
   String _csvName() {
     return file?.files.single.name ?? "robot.csv";
+  }
+
+  String _x3dName() {
+    return file?.files.single.name ?? "robot.x3d";
   }
 
   void pickFile() async {
@@ -44,16 +49,36 @@ class EditorPageState extends State<EditorPage> {
     }
   }
 
-  void saveFile() async {
+  // TODO: DRY?
+  void saveCsv() {
     String name = _csvName();
     String? csv = getCsvData();
-    if (csv == null) {
-      return;
-    }
-    Uint8List csvBytes = Uint8List.fromList(csv.codeUnits);
 
+    if (csv == null) return;
+
+    Uint8List csvData = Uint8List.fromList(csv.codeUnits);
+    saveFile(name, csvData);
+  }
+
+  void saveX3D() async {
+    String name = _x3dName();
+    String? x3d = await generateX3D();
+    if (x3d == null) return;
+
+    Uint8List x3dData = Uint8List.fromList(x3d.codeUnits);
+    saveFile(name, x3dData);
+  }
+
+  void previewX3D() async {
+    String? x3d = await generateX3D();
+    if (x3d == null) return;
+
+    showDialog(context: context, builder: (_) => X3DPreview(x3d));
+  }
+
+  void saveFile(String name, Uint8List data) async {
     // ext doesn't seem to do anything?
-    await FileSaver.instance.saveFile(name, csvBytes, "");
+    await FileSaver.instance.saveFile(name, data, "");
   }
 
   String? getCsvData() {
@@ -76,14 +101,13 @@ class EditorPageState extends State<EditorPage> {
     return csv;
   }
 
-  void generateX3D() async {
+  Future<String?> generateX3D() async {
     String? csvData = getCsvData();
-    if (csvData == null) {
-      return;
-    }
-    String output =
-        await promiseToFuture(writePyodideFile(_csvName(), csvData));
-    print(output);
+    if (csvData == null) return null;
+    await promiseToFuture(writePyodideFile(_csvName(), csvData));
+
+    String? modelXML = await promiseToFuture(generateX3DFile(_csvName()));
+    return modelXML;
   }
 
   List cols = [
@@ -109,23 +133,23 @@ class EditorPageState extends State<EditorPage> {
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  Wrap(
+                    direction: Axis.horizontal,
+                    spacing: 20.0,
+                    runSpacing: 20.0,
                     children: [
                       ElevatedButton(
                           onPressed: () {}, child: const Text("New File")),
-                      const SizedBox(width: 20.0),
                       ElevatedButton(
                           onPressed: pickFile,
                           child: const Text("Select File")),
-                      const SizedBox(width: 20.0),
                       ElevatedButton(
-                          onPressed: saveFile, child: const Text("Save CSV")),
-                      const SizedBox(width: 20.0),
+                          onPressed: saveCsv, child: const Text("Save CSV")),
                       ElevatedButton(
-                          onPressed: generateX3D,
-                          child: const Text("Export X3D")),
-                      const SizedBox(width: 20.0),
+                          onPressed: previewX3D,
+                          child: const Text("Preview X3D")),
+                      ElevatedButton(
+                          onPressed: saveX3D, child: const Text("Export X3D")),
                       Text(file?.files.single.name ?? "No file picked")
                     ],
                   ),
@@ -135,6 +159,7 @@ class EditorPageState extends State<EditorPage> {
                       child: Editable(
                         key: _editableKey, //Assign Key to Widget
                         showCreateButton: true,
+                        showRemoveIcon: true,
                         createButtonIcon: const Icon(Icons.add),
                         createButtonColor: Colors.black,
                         columns: cols,
@@ -144,70 +169,7 @@ class EditorPageState extends State<EditorPage> {
                         stripeColor2: Colors.black,
                         borderColor: Colors.blueGrey,
                       )),
-                  const SizedBox(height: 20.0),
-                  EasyWebView(
-                    key: key,
-                    src: htmlSrc,
-                    onLoaded: () {},
-                    isHtml: true,
-                    isMarkdown: false,
-                    convertToWidgets: false,
-                    //key: key,
-                    widgetsTextSelectable: false,
-                    webNavigationDelegate: (_) => WebNavigationDecision.prevent,
-                    crossWindowEvents: [
-                      CrossWindowEvent(
-                          name: 'Test',
-                          eventAction: (eventMessage) {
-                            print('Event message: $eventMessage');
-                          }),
-                    ],
-                    // width: 100,
-                    height: 1000.0,
-                  ),
+                  //const SizedBox(height: 20.0),
                 ]))));
   }
-
-  String htmlSrc = """
-   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge"/> 
-     <title>My first X3DOM page</title> 
-     <script type='text/javascript' src='https://www.x3dom.org/download/x3dom.js'> </script> 
-     <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link> 
-   </head> 
-   <body> 
-     <h1>Hello, X3DOM!</h1> 
-     <p> 
-       This is my first html page with some 3d objects. 
-     </p> 
-	 <x3d width='500px' height='400px'> 
-	   <scene> 
-		<shape> 
-		   <appearance> 
-			 <material diffuseColor='1 0 0'></material> 
-		   </appearance> 
-		   <box></box> 
-		</shape> 
-		<transform translation='-3 0 0'> 
-		  <shape> 
-			 <appearance> 
-			   <material diffuseColor='0 1 0'></material> 
-			 </appearance> 
-			 <cone></cone> 
-		  </shape> 
-		</transform> 
-		<transform translation='3 0 0'> 
-		  <shape> 
-			 <appearance> 
-			   <material diffuseColor='0 0 1'></material> 
-			 </appearance> 
-			 <sphere></sphere> 
-		  </shape> 
-		</transform> 
-	   </scene> 
-	</x3d> 
-   </body> 
-</html> 
-
-    """;
 }

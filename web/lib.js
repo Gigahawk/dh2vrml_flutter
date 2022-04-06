@@ -3,7 +3,7 @@ var pyodide = null;
 async function initPyodide() {
     // Don't reload pyodide if we're hot reloading
     updatePyodideProgress(0.0, "Loading Pyodide");
-    if(pyodide == null) {
+    if (pyodide == null) {
         pyodide = await loadPyodide({
             indexURL: "https://cdn.jsdelivr.net/pyodide/v0.19.0/full/"
         });
@@ -41,4 +41,21 @@ async function writePyodideFile(fileName, fileData) {
     data
     `)
     return data
+}
+
+async function generateX3DFile(fileName) {
+    pyodide.globals.set("file_name", fileName);
+    modelXML = await pyodide.runPythonAsync(`
+    from dh2vrml import cli
+    params = cli.get_params_from_file(file_name)
+    modelXML = cli.write_x3d_file(
+        file_name,
+        params,
+        (10, -10, 10),
+        (0, 0, 0),
+        False # Can't validate in pyodide
+    )
+    modelXML
+    `);
+    return modelXML;
 }
