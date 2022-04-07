@@ -14,7 +14,6 @@ jobs:
         with:
           channel: master
       - run: flutter pub get
-      - run: flutter test
       - uses: bluefireteam/flutter-gh-pages@v7
         with:
           baseHref: /dh2vrml_flutter/
