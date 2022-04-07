@@ -1,12 +1,13 @@
-import 'dart:collection';
+import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
 import 'dart:js_util';
 import 'dart:typed_data';
 
+import 'package:dh2vrml_flutter/name_setter.dart';
 import 'package:dh2vrml_flutter/x3d_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:editable/editable.dart';
-import 'package:easy_web_view2/easy_web_view2.dart';
 import 'package:csv/csv.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:dh2vrml_flutter/dh2vrml_web.dart';
@@ -19,21 +20,15 @@ class EditorPage extends StatefulWidget {
 }
 
 class EditorPageState extends State<EditorPage> {
-  FilePickerResult? file;
-  final _editableKey = GlobalKey<EditableState>();
+  PlatformFile? file;
+  final GlobalKey<EditableState> _editableKey = GlobalKey<EditableState>();
+  Widget? table;
+  TextEditingController tc = TextEditingController(text: "robot");
+  String get name => tc.text;
 
   @override
   void initState() {
     super.initState();
-  }
-
-  // TODO: DRY
-  String _csvName() {
-    return file?.files.single.name ?? "robot.csv";
-  }
-
-  String _x3dName() {
-    return file?.files.single.name ?? "robot.x3d";
   }
 
   void pickFile() async {
@@ -42,31 +37,56 @@ class EditorPageState extends State<EditorPage> {
         allowMultiple: false,
         allowedExtensions: ["yaml", "yml", "py", "csv"]);
 
-    if (result != null) {
-      setState(() {
-        file = result;
-      });
-    }
+    if (result == null) return;
+
+    PlatformFile file = result.files.single;
+    setTable(file);
+    setState(() {
+      tc.text = file.name.split(".")[0];
+    });
   }
 
-  // TODO: DRY?
+  void setTable(PlatformFile file) async {
+    String csvData = utf8.decode(file.bytes as List<int>);
+    await promiseToFuture(writePyodideFile(file.name, csvData));
+    String? csvParams = await promiseToFuture(convertParamsToCSV(file.name));
+    List<List<String>> data =
+        const CsvToListConverter(shouldParseNumbers: false, eol: "\n")
+            .convert(csvParams);
+
+    List<Map<String, String>> csvRows = [];
+    List<String> headers = data.removeAt(0);
+    for (var i = 0; i < data.length; i++) {
+      Map<String, String> row = {};
+      for (var j = 0; j < headers.length; j++) {
+        row[headers[j]] = data[i][j];
+      }
+      csvRows.add(row);
+    }
+
+    setState(() {
+      rows = csvRows;
+      _editableKey.currentState?.rows = rows;
+    });
+  }
+
   void saveCsv() {
-    String name = _csvName();
+    String csvName = "$name.csv";
     String? csv = getCsvData();
 
     if (csv == null) return;
 
     Uint8List csvData = Uint8List.fromList(csv.codeUnits);
-    saveFile(name, csvData);
+    saveFile(csvName, csvData);
   }
 
   void saveX3D() async {
-    String name = _x3dName();
+    String x3dName = "$name.x3d";
     String? x3d = await generateX3D();
     if (x3d == null) return;
 
     Uint8List x3dData = Uint8List.fromList(x3d.codeUnits);
-    saveFile(name, x3dData);
+    saveFile(x3dName, x3dData);
   }
 
   void previewX3D() async {
@@ -74,6 +94,14 @@ class EditorPageState extends State<EditorPage> {
     if (x3d == null) return;
 
     showDialog(context: context, builder: (_) => X3DPreview(x3d));
+  }
+
+  void setName() async {
+    await showDialog(context: context, builder: (_) => NameSetterDialog(tc));
+    if (tc.text == "") {
+      tc.text = "robot";
+    }
+    setState(() {});
   }
 
   void saveFile(String name, Uint8List data) async {
@@ -102,15 +130,16 @@ class EditorPageState extends State<EditorPage> {
   }
 
   Future<String?> generateX3D() async {
+    String csvName = "$name.csv";
     String? csvData = getCsvData();
     if (csvData == null) return null;
-    await promiseToFuture(writePyodideFile(_csvName(), csvData));
+    await promiseToFuture(writePyodideFile(csvName, csvData));
 
-    String? modelXML = await promiseToFuture(generateX3DFile(_csvName()));
+    String? modelXML = await promiseToFuture(generateX3DFile(csvName));
     return modelXML;
   }
 
-  List cols = [
+  List<Map<String, dynamic>> cols = [
     {"title": 'Joint Type', 'widthFactor': 0.15, 'key': 'type'},
     {"title": 'd', 'widthFactor': 0.10, 'key': 'd'},
     {"title": 'theta', 'widthFactor': 0.10, 'key': 'theta'},
@@ -121,7 +150,7 @@ class EditorPageState extends State<EditorPage> {
     {"title": 'Offset', 'widthFactor': 0.15, 'key': 'offset'},
   ];
 
-  List rows = [];
+  List<Map<String, String>> rows = [];
 
   @override
   Widget build(BuildContext context) {
@@ -134,15 +163,17 @@ class EditorPageState extends State<EditorPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                   Wrap(
+                    runAlignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     direction: Axis.horizontal,
                     spacing: 20.0,
                     runSpacing: 20.0,
                     children: [
                       ElevatedButton(
-                          onPressed: () {}, child: const Text("New File")),
+                          onPressed: setName, child: const Text("Set Name")),
                       ElevatedButton(
                           onPressed: pickFile,
-                          child: const Text("Select File")),
+                          child: const Text("Import Parameters")),
                       ElevatedButton(
                           onPressed: saveCsv, child: const Text("Save CSV")),
                       ElevatedButton(
@@ -150,26 +181,26 @@ class EditorPageState extends State<EditorPage> {
                           child: const Text("Preview X3D")),
                       ElevatedButton(
                           onPressed: saveX3D, child: const Text("Export X3D")),
-                      Text(file?.files.single.name ?? "No file picked")
+                      Text(name)
                     ],
                   ),
                   const SizedBox(height: 20.0),
                   SizedBox(
-                      height: 1000.0,
+                      height: 600,
                       child: Editable(
-                        key: _editableKey, //Assign Key to Widget
+                        key: _editableKey,
                         showCreateButton: true,
                         showRemoveIcon: true,
                         createButtonIcon: const Icon(Icons.add),
                         createButtonColor: Colors.black,
+                        removeIconColor: Colors.white,
                         columns: cols,
                         rows: rows,
                         zebraStripe: true,
                         stripeColor1: Colors.black12,
                         stripeColor2: Colors.black,
                         borderColor: Colors.blueGrey,
-                      )),
-                  //const SizedBox(height: 20.0),
+                      ))
                 ]))));
   }
 }

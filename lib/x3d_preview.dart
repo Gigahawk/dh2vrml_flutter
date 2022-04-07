@@ -27,25 +27,23 @@ class X3DPreview extends StatelessWidget {
     String htmlSrc = """
     <html>
       <head>
-        <meta http-equiv="X-UA-Compatible" content="IE=edge"/> 
+        <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
         <script type='text/javascript' src='https://x3dom.org/release/x3dom-full.js'> </script> 
         <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'></link> 
         <link rel='stylesheet' type='text/css' href='x3dfullscreen.css'></link> 
-      </head> 
-      <body> 
+      </head>
+      <body>
         $_model
-      </body> 
-    </html> 
+      </body>
+    </html>
       """;
-    print(htmlSrc);
     return htmlSrc;
   }
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return AlertDialog(
-      title: Text("X3D Preview"),
+      title: const Text("X3D Preview"),
       content: EasyWebView(
         key: previewKey,
         src: _htmlSrc(),
@@ -55,13 +53,7 @@ class X3DPreview extends StatelessWidget {
         convertToWidgets: false,
         widgetsTextSelectable: false,
         webNavigationDelegate: (_) => WebNavigationDecision.prevent,
-        crossWindowEvents: [
-          CrossWindowEvent(
-              name: 'Test',
-              eventAction: (eventMessage) {
-                print('Event message: $eventMessage');
-              }),
-        ],
+        crossWindowEvents: const [],
         width: 1000.0,
         height: 600.0,
       ),

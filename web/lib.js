@@ -13,7 +13,7 @@ async function initPyodide() {
     updatePyodideProgress(0.35, "Importing micropip");
     await pyodide.runPythonAsync("import micropip");
     updatePyodideProgress(0.55, "Installing dh2vrml");
-    await pyodide.runPythonAsync("await micropip.install('dh2vrml==0.1.9')");
+    await pyodide.runPythonAsync("await micropip.install('dh2vrml==0.1.12')");
     updatePyodideProgress(0.85, "Importing dh2vrml");
     await pyodide.runPythonAsync("import dh2vrml");
     await pyodide.runPythonAsync("from dh2vrml import cli");
@@ -58,4 +58,15 @@ async function generateX3DFile(fileName) {
     modelXML
     `);
     return modelXML;
+}
+
+async function convertParamsToCSV(fileName) {
+    pyodide.globals.set("file_name", fileName);
+    csvStr = await pyodide.runPythonAsync(`
+    from dh2vrml import cli
+    params = cli.get_params_from_file(file_name)
+    csvStr = params.to_csv()
+    csvStr
+    `);
+    return csvStr;
 }

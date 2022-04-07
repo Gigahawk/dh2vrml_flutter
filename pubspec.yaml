@@ -38,7 +38,7 @@ dependencies:
   editable:
     git:
       url: https://github.com/Gigahawk/editable.git
-      ref: accessRows
+      ref: 871661f
 
 
 
