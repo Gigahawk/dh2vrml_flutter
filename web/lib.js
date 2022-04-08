@@ -60,6 +60,21 @@ async function generateX3DFile(fileName) {
     return modelXML;
 }
 
+async function generateMDLFile(fileName, modelName) {
+    pyodide.globals.set("file_name", fileName);
+    pyodide.globals.set("model_name", modelName);
+    modelMDL = await pyodide.runPythonAsync(`
+    from dh2vrml import cli
+    params = cli.get_params_from_file(file_name)
+    modelMDL = cli.write_mdl_file(
+        model_name,
+        params,
+    )
+    modelMDL
+    `);
+    return modelMDL;
+}
+
 async function convertParamsToCSV(fileName) {
     pyodide.globals.set("file_name", fileName);
     csvStr = await pyodide.runPythonAsync(`

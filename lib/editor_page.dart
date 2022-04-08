@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:js_util';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
+import 'package:file/memory.dart';
 import 'package:flutter_advanced_switch/flutter_advanced_switch.dart';
 import 'package:dh2vrml_flutter/name_setter.dart';
 import 'package:dh2vrml_flutter/x3d_preview.dart';
@@ -13,6 +16,7 @@ import 'package:editable/editable.dart';
 import 'package:csv/csv.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:dh2vrml_flutter/dh2vrml_web.dart';
+import 'package:tuple/tuple.dart';
 
 class EditorPage extends StatefulWidget {
   const EditorPage({Key? key}) : super(key: key);
@@ -28,6 +32,8 @@ class EditorPageState extends State<EditorPage> {
   TextEditingController tc = TextEditingController(text: "robot");
   String get name => tc.text;
   final ValueNotifier<bool> useDegreesController = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> generateSimulinkController =
+      ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -124,7 +130,23 @@ class EditorPageState extends State<EditorPage> {
     if (x3d == null) return;
 
     Uint8List x3dData = Uint8List.fromList(x3d.codeUnits);
-    saveFile(x3dName, x3dData);
+
+    if (generateSimulinkController.value) {
+      String mdlName = "simulink_$name.mdl";
+      String? mdl = await generateMDL();
+      if (mdl == null) return;
+
+      Uint8List mdlData = Uint8List.fromList(mdl.codeUnits);
+      String zipName = "$name.zip";
+      Uint8List? zipData = createZip([
+        Tuple2<String, Uint8List>(x3dName, x3dData),
+        Tuple2<String, Uint8List>(mdlName, mdlData),
+      ]);
+      if (zipData == null) return;
+      saveFile(zipName, zipData);
+    } else {
+      saveFile(x3dName, x3dData);
+    }
   }
 
   void previewX3D() async {
@@ -140,6 +162,18 @@ class EditorPageState extends State<EditorPage> {
       tc.text = "robot";
     }
     setState(() {});
+  }
+
+  Uint8List? createZip(List<Tuple2<String, Uint8List>> data) {
+    Archive archive = Archive();
+    for (Tuple2<String, Uint8List> element in data) {
+      String name = element.item1;
+      Uint8List fileData = element.item2;
+      ArchiveFile f = ArchiveFile(name, fileData.length, fileData);
+      archive.addFile(f);
+    }
+    Uint8List? zipData = ZipEncoder().encode(archive) as Uint8List;
+    return zipData;
   }
 
   void saveFile(String name, Uint8List data) async {
@@ -185,6 +219,16 @@ class EditorPageState extends State<EditorPage> {
 
     String? modelXML = await promiseToFuture(generateX3DFile(csvName));
     return modelXML;
+  }
+
+  Future<String?> generateMDL() async {
+    String csvName = "$name.csv";
+    String? csvData = getCsvData();
+    if (csvData == null) return null;
+    await promiseToFuture(writePyodideFile(csvName, csvData));
+
+    String? modelMDL = await promiseToFuture(generateMDLFile(csvName, name));
+    return modelMDL;
   }
 
   List<Map<String, dynamic>> cols = [
@@ -245,6 +289,16 @@ class EditorPageState extends State<EditorPage> {
                           controller: useDegreesController,
                           activeChild: const Text("DEG"),
                           inactiveChild: const Text("RAD"),
+                          // TODO: figure out how to pull this from theme
+                          activeColor: Colors.blue,
+                          width: 65.0,
+                          height: 30.0),
+                      const SizedBox(width: 10.0),
+                      const Text("Generate Simulink Model"),
+                      AdvancedSwitch(
+                          controller: generateSimulinkController,
+                          activeChild: const Text("ON"),
+                          inactiveChild: const Text("OFF"),
                           // TODO: figure out how to pull this from theme
                           activeColor: Colors.blue,
                           width: 65.0,
