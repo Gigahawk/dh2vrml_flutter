@@ -6,6 +6,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:dh2vrml_flutter/constants.dart';
 import 'package:file/memory.dart';
 import 'package:flutter_advanced_switch/flutter_advanced_switch.dart';
 import 'package:dh2vrml_flutter/name_setter.dart';
@@ -17,6 +18,7 @@ import 'package:csv/csv.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:dh2vrml_flutter/dh2vrml_web.dart';
 import 'package:tuple/tuple.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EditorPage extends StatefulWidget {
   const EditorPage({Key? key}) : super(key: key);
@@ -164,6 +166,12 @@ class EditorPageState extends State<EditorPage> {
     setState(() {});
   }
 
+  void showHelp() {
+    String url =
+        "https://github.com/Gigahawk/dh2vrml/blob/$dh2vrmlVersion/README.md#parameters";
+    launch(url);
+  }
+
   Uint8List? createZip(List<Tuple2<String, Uint8List>> data) {
     Archive archive = Archive();
     for (Tuple2<String, Uint8List> element in data) {
@@ -247,7 +255,12 @@ class EditorPageState extends State<EditorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: const Text('dh2vrml for web')),
+        appBar: AppBar(
+          title: const Text('dh2vrml for web'),
+          actions: [
+            ElevatedButton(onPressed: showHelp, child: const Text("Help"))
+          ],
+        ),
         body: Padding(
             padding: const EdgeInsets.all(16.0),
             child: SingleChildScrollView(

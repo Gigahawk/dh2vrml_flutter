@@ -1,6 +1,6 @@
 var pyodide = null;
 
-async function initPyodide() {
+async function initPyodide(dh2vrmlVersion) {
     // Don't reload pyodide if we're hot reloading
     updatePyodideProgress(0.0, "Loading Pyodide");
     if (pyodide == null) {
@@ -8,12 +8,13 @@ async function initPyodide() {
             indexURL: "https://cdn.jsdelivr.net/pyodide/v0.19.0/full/"
         });
     }
+    pyodide.globals.set("dh2vrml_version", dh2vrmlVersion);
     updatePyodideProgress(0.1, "Loading micropip");
     await pyodide.loadPackage("micropip");
     updatePyodideProgress(0.35, "Importing micropip");
     await pyodide.runPythonAsync("import micropip");
     updatePyodideProgress(0.55, "Installing dh2vrml");
-    await pyodide.runPythonAsync("await micropip.install('dh2vrml==0.1.12')");
+    await pyodide.runPythonAsync("await micropip.install(f'dh2vrml=={dh2vrml_version}')");
     updatePyodideProgress(0.85, "Importing dh2vrml");
     await pyodide.runPythonAsync("import dh2vrml");
     await pyodide.runPythonAsync("from dh2vrml import cli");
