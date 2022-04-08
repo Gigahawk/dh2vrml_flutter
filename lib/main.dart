@@ -30,6 +30,6 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
           primarySwatch: Colors.blue,
         ),
-        home: LoadingPage());
+        home: const LoadingPage());
   }
 }

@@ -35,6 +35,7 @@ dependencies:
   easy_web_view2: ^0.0.3
   file_saver: ^0.1.0
   csv: ^5.0.1
+  flutter_advanced_switch: ^3.0.1
   editable:
     git:
       url: https://github.com/Gigahawk/editable.git
