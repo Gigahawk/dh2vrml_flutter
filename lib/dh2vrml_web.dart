@@ -15,6 +15,9 @@ external set _updatePyodideProgress(void Function(double, String) f);
 @JS('generateX3DFile')
 external dynamic generateX3DFile(String fileName);
 
+@JS('generateMDLFile')
+external dynamic generateMDLFile(String fileName, String modelName);
+
 @JS('convertParamsToCSV')
 external dynamic convertParamsToCSV(String fileName);
 
