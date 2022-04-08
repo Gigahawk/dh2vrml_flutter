@@ -1,3 +1,4 @@
+import 'package:dh2vrml_flutter/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:dh2vrml_flutter/dh2vrml_web.dart';
 import 'package:dh2vrml_flutter/editor_page.dart';
@@ -32,10 +33,8 @@ class LoadingPageState extends State<LoadingPage> {
   @override
   void initState() {
     super.initState();
-    print("Init interop");
     initInterop(onLoadProgress);
-    print("load pyodide");
-    initPyodide();
+    initPyodide(dh2vrmlVersion);
   }
 
   @override

@@ -4,7 +4,7 @@ library dh2vrml_web;
 import 'package:js/js.dart';
 
 @JS('initPyodide')
-external void initPyodide();
+external void initPyodide(String dh2vrmlVersion);
 
 @JS('writePyodideFile')
 external dynamic writePyodideFile(String fileName, String fileData);
