@@ -1,8 +1,10 @@
 import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:js_util';
+import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter_advanced_switch/flutter_advanced_switch.dart';
 import 'package:dh2vrml_flutter/name_setter.dart';
 import 'package:dh2vrml_flutter/x3d_preview.dart';
 import 'package:flutter/material.dart';
@@ -25,10 +27,43 @@ class EditorPageState extends State<EditorPage> {
   Widget? table;
   TextEditingController tc = TextEditingController(text: "robot");
   String get name => tc.text;
+  final ValueNotifier<bool> useDegreesController = ValueNotifier<bool>(false);
 
   @override
   void initState() {
     super.initState();
+    setupDegreesNotification();
+  }
+
+  void setupDegreesNotification() {
+    useDegreesController.addListener(() {
+      switchTableUnits(useDegreesController.value);
+    });
+  }
+
+  void switchTableUnits(bool toDegrees) {
+    switchColUnits(toDegrees, "theta");
+    switchColUnits(toDegrees, "alpha");
+    setState(() {});
+  }
+
+  void switchColUnits(bool toDegrees, String col) {
+    double conversion = 180.0 / pi;
+    for (var i = 0; i < rows.length; i++) {
+      try {
+        String? s = rows[i][col];
+        if (s == null) continue;
+        double value = double.parse(s);
+        if (toDegrees) {
+          value *= conversion;
+        } else {
+          value /= conversion;
+        }
+        rows[i][col] = value.toString();
+      } catch (_) {
+        continue;
+      }
+    }
   }
 
   void pickFile() async {
@@ -36,17 +71,20 @@ class EditorPageState extends State<EditorPage> {
         type: FileType.custom,
         allowMultiple: false,
         allowedExtensions: ["yaml", "yml", "py", "csv"]);
+    bool restoreUseDegrees = useDegreesController.value;
 
     if (result == null) return;
+    useDegreesController.value = false;
 
     PlatformFile file = result.files.single;
-    setTable(file);
+    await setTable(file);
     setState(() {
       tc.text = file.name.split(".")[0];
+      useDegreesController.value = restoreUseDegrees;
     });
   }
 
-  void setTable(PlatformFile file) async {
+  Future<void> setTable(PlatformFile file) async {
     String csvData = utf8.decode(file.bytes as List<int>);
     await promiseToFuture(writePyodideFile(file.name, csvData));
     String? csvParams = await promiseToFuture(convertParamsToCSV(file.name));
@@ -118,10 +156,20 @@ class EditorPageState extends State<EditorPage> {
     List<String> csvHeader =
         currCols.map((element) => element['key'] as String).toList();
     List<List<String>> csvRows = currRows.map((row) {
-      return csvHeader.map((key) {
+      return csvHeader.map((String key) {
         return row[key] as String;
       }).toList();
     }).toList();
+
+    if (useDegreesController.value) {
+      csvHeader = csvHeader.map((String key) {
+        if (key == "alpha" || key == "theta") {
+          return "${key}_deg";
+        } else {
+          return key;
+        }
+      }).toList();
+    }
 
     csvRows.insert(0, csvHeader);
 
@@ -181,7 +229,26 @@ class EditorPageState extends State<EditorPage> {
                           child: const Text("Preview X3D")),
                       ElevatedButton(
                           onPressed: saveX3D, child: const Text("Export X3D")),
-                      Text(name)
+                      Text("Name: $name")
+                    ],
+                  ),
+                  const SizedBox(height: 20.0),
+                  Wrap(
+                    runAlignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    direction: Axis.horizontal,
+                    spacing: 10.0,
+                    runSpacing: 10.0,
+                    children: [
+                      const Text("Angle Unit:"),
+                      AdvancedSwitch(
+                          controller: useDegreesController,
+                          activeChild: const Text("DEG"),
+                          inactiveChild: const Text("RAD"),
+                          // TODO: figure out how to pull this from theme
+                          activeColor: Colors.blue,
+                          width: 65.0,
+                          height: 30.0)
                     ],
                   ),
                   const SizedBox(height: 20.0),
