@@ -242,9 +242,9 @@ class EditorPageState extends State<EditorPage> {
   List<Map<String, dynamic>> cols = [
     {"title": 'Joint Type', 'widthFactor': 0.15, 'key': 'type'},
     {"title": 'd', 'widthFactor': 0.10, 'key': 'd'},
-    {"title": 'theta', 'widthFactor': 0.10, 'key': 'theta'},
+    {"title": 'θ', 'widthFactor': 0.10, 'key': 'theta'},
     {"title": 'r', 'widthFactor': 0.10, 'key': 'r'},
-    {"title": 'alpha', 'widthFactor': 0.10, 'key': 'alpha'},
+    {"title": 'α', 'widthFactor': 0.10, 'key': 'alpha'},
     {"title": 'Color', 'widthFactor': 0.15, 'key': 'color'},
     {"title": 'Scale', 'widthFactor': 0.10, 'key': 'scale'},
     {"title": 'Offset', 'widthFactor': 0.15, 'key': 'offset'},
