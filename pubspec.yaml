@@ -42,7 +42,7 @@ dependencies:
   editable:
     git:
       url: https://github.com/Gigahawk/editable.git
-      ref: 871661f
+      ref: "704e254"
 
 
 

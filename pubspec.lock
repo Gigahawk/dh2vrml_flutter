@@ -96,8 +96,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "871661f"
-      resolved-ref: "871661f4ceb59e935b2b7a395708906b98bc4539"
+      ref: "704e254"
+      resolved-ref: "704e2540e1578409f1df3fcb78da2b46c6262e9d"
       url: "https://github.com/Gigahawk/editable.git"
     source: git
     version: "2.0.0"
